@@ -5,51 +5,190 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulador de Perceptron</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Simulador de Perceptron</h1>
-            <p class="subtitle">Visualize o aprendizado de um Perceptron de camada única</p>
+            <div class="header-content">
+                <div class="title-section">
+                    <h1>Simulador de Perceptron</h1>
+                    <p class="subtitle">Visualize o aprendizado de um Perceptron de camada única</p>
+                </div>
+                <div class="author-card">
+                    <div class="author-profile">
+                        <img src="https://avatars.githubusercontent.com/u/984221?v=4&size=64" alt="David Azevedo" class="author-photo">
+                        <h2>David Azevedo</h2>
+                        <p class="author-bio">Desenvolvedor e pesquisador em Inteligência Artificial, apaixonado por educação e tecnologia.</p>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/davidazevedosp" target="_blank" class="social-link linkedin" title="LinkedIn">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                        <a href="https://www.instagram.com/davidazevedoba" target="_blank" class="social-link instagram" title="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="https://twitter.com/davidazevedosp" target="_blank" class="social-link twitter" title="Twitter">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="https://github.com/davidazevedo" target="_blank" class="social-link github" title="GitHub">
+                            <i class="fab fa-github"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <main>
             <div class="simulator-container">
                 <div class="canvas-container">
                     <canvas id="perceptronCanvas"></canvas>
-                </div>
-                
-                <div class="controls-container">
-                    <div class="control-group">
+                    <div class="canvas-controls">
                         <button id="randomData" class="btn">Gerar Dados Aleatórios</button>
                         <button id="trainOneEpoch" class="btn">Treinar 1 Época</button>
                         <button id="trainUntilConvergence" class="btn">Treinar até Convergência</button>
+                        <button id="autoTrain" class="btn">Auto Treinamento</button>
                         <button id="reset" class="btn">Resetar</button>
+                    </div>
+                </div>
+                
+                <div class="controls-container">
+                    <div class="header-controls">
+                        <button id="themeToggle" class="btn btn-theme" title="Alternar entre tema claro e escuro">
+                            <span class="theme-icon">🌙</span>
+                            <span class="btn-label">Alternar Tema</span>
+                        </button>
+                        <button id="aboutBtn" class="btn btn-info" title="Saiba mais sobre o Perceptron">
+                            <i class="fas fa-info-circle"></i>
+                            <span class="btn-label">Sobre o Perceptron</span>
+                        </button>
+                        <button id="donateBtn" class="btn btn-donate" title="Apoie o desenvolvimento deste projeto">
+                            <i class="fas fa-coffee"></i>
+                            <span class="btn-label">Apoie com um Café</span>
+                        </button>
                     </div>
 
                     <div class="control-group">
-                        <label for="learningRate">Taxa de Aprendizado:</label>
-                        <input type="range" id="learningRate" min="0.001" max="1" step="0.001" value="0.1">
-                        <span id="learningRateValue">0.1</span>
+                        <label for="learningRate" class="control-label">
+                            <i class="fas fa-tachometer-alt"></i>
+                            Taxa de Aprendizado
+                            <span class="tooltip" data-tooltip="Controla a velocidade do aprendizado. Valores maiores aprendem mais rápido, mas podem oscilar mais.">?</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="learningRate" min="0.001" max="1" step="0.001" value="0.1">
+                            <span id="learningRateValue" class="value-display">0.1</span>
+                        </div>
                     </div>
 
                     <div class="info-panel">
-                        <h3>Informações do Modelo</h3>
+                        <h3>
+                            <i class="fas fa-chart-line"></i>
+                            Informações do Modelo
+                        </h3>
                         <div class="info-group">
-                            <p>Pesos: <span id="weights">[0, 0]</span></p>
-                            <p>Taxa de Erro: <span id="errorRate">0%</span></p>
-                            <p>Acertos por Época: <span id="epochAccuracy">0</span></p>
+                            <div class="info-item">
+                                <span class="info-label">
+                                    <i class="fas fa-weight-hanging"></i>
+                                    Pesos
+                                </span>
+                                <span id="weights" class="info-value">[0, 0]</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    Taxa de Erro
+                                </span>
+                                <span id="errorRate" class="info-value">0%</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">
+                                    <i class="fas fa-check-circle"></i>
+                                    Acertos por Época
+                                </span>
+                                <span id="epochAccuracy" class="info-value">0</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">
+                                    <i class="fas fa-sync"></i>
+                                    Épocas
+                                </span>
+                                <span id="epochs" class="info-value">0</span>
+                            </div>
                         </div>
                     </div>
 
                     <div class="explanation-panel">
-                        <h3>Como Funciona</h3>
-                        <p>O Perceptron é um algoritmo de aprendizado supervisionado que aprende a classificar pontos em duas classes (0 e 1).</p>
-                        <p>Clique no canvas para adicionar pontos e observe como a reta de decisão se ajusta durante o treinamento.</p>
+                        <h3>
+                            <i class="fas fa-lightbulb"></i>
+                            Como Funciona
+                        </h3>
+                        <div class="explanation-content">
+                            <p>
+                                <i class="fas fa-mouse-pointer"></i>
+                                Clique no canvas para adicionar pontos de treinamento.
+                            </p>
+                            <p>
+                                <i class="fas fa-paint-brush"></i>
+                                Use os botões de controle para treinar o modelo.
+                            </p>
+                            <p>
+                                <i class="fas fa-eye"></i>
+                                Observe como a reta de decisão se ajusta durante o treinamento.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="aboutModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>O Perceptron de Frank Rosenblatt</h2>
+            <div class="modal-body">
+                <h3>História</h3>
+                <p>O Perceptron foi proposto por Frank Rosenblatt em 1957 e é considerado um dos primeiros modelos de redes neurais artificiais. Foi uma das primeiras tentativas de criar uma máquina que pudesse aprender através de exemplos.</p>
+
+                <h3>Como Funciona</h3>
+                <p>O Perceptron é um classificador linear binário que aprende através do algoritmo de aprendizado do Perceptron:</p>
+                <ol>
+                    <li><strong>Entradas:</strong> Recebe entradas (neste caso, coordenadas x e y)</li>
+                    <li><strong>Pesos:</strong> Cada entrada tem um peso associado</li>
+                    <li><strong>Soma Ponderada:</strong> Calcula a soma ponderada das entradas</li>
+                    <li><strong>Função de Ativação:</strong> Aplica uma função de ativação (step function) para produzir a saída</li>
+                    <li><strong>Aprendizado:</strong> Ajusta os pesos com base no erro de classificação</li>
+                </ol>
+
+                <h3>Limitações</h3>
+                <p>O Perceptron só pode classificar dados linearmente separáveis. Isso significa que deve existir uma reta (ou hiperplano em dimensões maiores) que possa separar as duas classes.</p>
+
+                <h3>Importância Histórica</h3>
+                <p>Embora limitado, o Perceptron foi fundamental para o desenvolvimento das redes neurais modernas. Ele introduziu conceitos importantes como:</p>
+                <ul>
+                    <li>Aprendizado supervisionado</li>
+                    <li>Funções de ativação</li>
+                    <li>Ajuste de pesos baseado em erro</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Donation Modal -->
+    <div id="donateModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Apoie este Projeto</h2>
+            <div class="modal-body">
+                <p>Se você gostou deste simulador e gostaria de apoiar o desenvolvimento de mais ferramentas educacionais, considere fazer uma doação através do PIX.</p>
+                <div class="pix-info">
+                    <p><strong>Chave PIX:</strong> davidengine@gmail.com</p>
+                    <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2ZmZiIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5kYXZpZGVuZ2luZUBnbWFpbC5jb208L3RleHQ+PC9zdmc+" alt="QR Code PIX" class="pix-qr">
+                </div>
+                <p class="thank-you">Muito obrigado pelo seu apoio! ☕</p>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="js/app.js"></script>

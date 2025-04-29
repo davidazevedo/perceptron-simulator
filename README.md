@@ -1,66 +1,77 @@
 # Simulador de Perceptron
 
-Uma aplicação web interativa que demonstra o funcionamento do Perceptron de Frank Rosenblatt, um dos primeiros algoritmos de aprendizado de máquina.
+Um simulador interativo do algoritmo Perceptron, desenvolvido para auxiliar no entendimento de conceitos fundamentais de Machine Learning e Redes Neurais.
 
-## 🚀 Como Usar
+## 🎯 Sobre o Projeto
 
-1. Clone este repositório ou baixe os arquivos
-2. Abra o arquivo `index.html` em seu navegador
-3. Interaja com a aplicação:
-   - Clique no canvas para adicionar pontos
-   - Use os botões para controlar o treinamento
-   - Ajuste a taxa de aprendizado com o controle deslizante
+Este projeto é parte da pesquisa de doutorado em Inteligência Artificial e Educação, desenvolvida pelo autor. O simulador permite visualizar o processo de aprendizado do Perceptron, um dos primeiros algoritmos de aprendizado de máquina, proposto por Frank Rosenblatt em 1957.
 
-## 🎯 Funcionalidades
+## 👨‍💻 Autor
 
-- **Canvas Interativo**: Adicione pontos clicando no canvas
-- **Geração de Dados**: Crie conjuntos de dados aleatórios
-- **Treinamento Controlado**: Treine o modelo uma época por vez ou até a convergência
-- **Visualização em Tempo Real**: Observe a reta de decisão se ajustando
-- **Métricas de Desempenho**: Acompanhe os pesos, taxa de erro e acurácia
+### David Azevedo
+- **Doutorando em Inteligência Artificial e Educação**
+  - Universidade Federal de São Carlos (UFSCar)
+  - Área de Concentração: Inteligência Artificial Aplicada à Educação
+  - Tese: "Desenvolvimento de Ferramentas Interativas para o Ensino de Inteligência Artificial"
+  
+- **Mestre em Ciência da Computação**
+  - Universidade Federal de São Carlos (UFSCar)
+  - Dissertação: "Aplicação de Técnicas de Machine Learning em Sistemas Educacionais"
+  
+- **Especialista em Desenvolvimento Web**
+  - Universidade de São Paulo (USP)
+  - TCC: "Frameworks Modernos para Desenvolvimento Web"
 
-## 📚 Conceitos Educacionais
+### Contato e Redes Sociais
+- LinkedIn: [davidazevedosp](https://www.linkedin.com/in/davidazevedosp)
+- GitHub: [davidazevedo](https://github.com/davidazevedo)
+- Twitter: [@davidazevedosp](https://twitter.com/davidazevedosp)
+- Instagram: [@davidazevedoba](https://www.instagram.com/davidazevedoba)
 
-### O que é um Perceptron?
+## ☕ Apoie o Projeto
 
-O Perceptron é um algoritmo de aprendizado supervisionado que aprende a classificar dados em duas classes. Ele foi proposto por Frank Rosenblatt em 1957 e é considerado um dos primeiros modelos de redes neurais artificiais.
+Se você gostou deste simulador e gostaria de apoiar o desenvolvimento de mais ferramentas educacionais, considere fazer uma doação através do PIX.
 
-### Como Funciona?
+### Chave PIX
+- **Email:** davidengine@gmail.com
+- **QR Code PIX:** [Clique aqui para ver o QR Code](https://github.com/davidazevedo/perceptron-simulator/blob/main/pix-qr.png)
 
-1. **Entrada**: O Perceptron recebe entradas (neste caso, coordenadas x e y)
-2. **Pesos**: Cada entrada tem um peso associado
-3. **Soma Ponderada**: Calcula a soma ponderada das entradas
-4. **Função de Ativação**: Aplica uma função de ativação (step function) para produzir a saída
-5. **Aprendizado**: Ajusta os pesos com base no erro de classificação
+Sua contribuição ajuda a manter o projeto ativo e incentiva o desenvolvimento de novas ferramentas educacionais.
 
-### Aprendizado
+## 🚀 Funcionalidades
 
-O Perceptron aprende através do algoritmo de aprendizado do Perceptron:
-1. Para cada ponto de treinamento:
-   - Faz uma predição
-   - Calcula o erro (diferença entre o valor real e o previsto)
-   - Ajusta os pesos proporcionalmente ao erro e à taxa de aprendizado
+- Visualização interativa do processo de aprendizado
+- Geração de dados aleatórios
+- Controle da taxa de aprendizado
+- Treinamento manual e automático
+- Visualização da reta de decisão em tempo real
+- Modo claro/escuro
 
 ## 🛠️ Tecnologias Utilizadas
 
 - HTML5
-- CSS3 (com suporte a modo escuro)
+- CSS3
 - JavaScript (ES6+)
-- Canvas API para renderização
+- Canvas API
 
-## 📝 Notas de Implementação
+## 📚 Como Usar
 
-- A aplicação é puramente client-side, sem dependências externas
-- O código é modular e segue boas práticas de programação
-- A interface é responsiva e suporta diferentes tamanhos de tela
+1. Clone o repositório
+2. Abra o arquivo `index.html` em seu navegador
+3. Interaja com o canvas clicando para adicionar pontos
+4. Use os controles para treinar o modelo
+5. Observe como a reta de decisão se ajusta durante o treinamento
+
+## 📝 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
 ## 🤝 Contribuições
 
-Contribuições são bem-vindas! Sinta-se à vontade para:
-- Reportar bugs
-- Sugerir melhorias
-- Adicionar novas funcionalidades
+Contribuições são bem-vindas! Sinta-se à vontade para abrir issues ou enviar pull requests.
 
-## 📄 Licença
+## 📚 Referências
 
-Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para detalhes. 
+- Rosenblatt, F. (1957). The Perceptron: A Probabilistic Model for Information Storage and Organization in the Brain
+- Minsky, M., & Papert, S. (1969). Perceptrons: An Introduction to Computational Geometry
+- Goodfellow, I., Bengio, Y., & Courville, A. (2016). Deep Learning 

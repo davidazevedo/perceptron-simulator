@@ -9,27 +9,81 @@ class App {
         this.perceptron = new Perceptron();
         this.learningRate = 0.1;
         this.isTraining = false;
+        this.autoTrainInterval = null;
+        this.epochs = 0;
+        this.currentTheme = localStorage.getItem('theme') || 'light';
 
         this.init();
     }
 
     init() {
+        // Set initial theme
+        this.setTheme(this.currentTheme);
+
         // Inicialização do canvas
         this.renderer.init();
         this.renderer.setPerceptron(this.perceptron);
 
         // Event listeners
         this.setupEventListeners();
+        this.setupModals();
         this.updateUI();
     }
 
+    setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        
+        // Update theme icon
+        const themeIcon = document.querySelector('.theme-icon');
+        themeIcon.textContent = theme === 'light' ? '🌙' : '☀️';
+    }
+
+    toggleTheme() {
+        this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
+        this.setTheme(this.currentTheme);
+    }
+
+    setupModals() {
+        // About Modal
+        const aboutModal = document.getElementById('aboutModal');
+        const aboutBtn = document.getElementById('aboutBtn');
+        const aboutClose = aboutModal.querySelector('.close');
+
+        aboutBtn.onclick = () => aboutModal.style.display = "block";
+        aboutClose.onclick = () => aboutModal.style.display = "none";
+        window.onclick = (event) => {
+            if (event.target === aboutModal) {
+                aboutModal.style.display = "none";
+            }
+        }
+
+        // Donate Modal
+        const donateModal = document.getElementById('donateModal');
+        const donateBtn = document.getElementById('donateBtn');
+        const donateClose = donateModal.querySelector('.close');
+
+        donateBtn.onclick = () => donateModal.style.display = "block";
+        donateClose.onclick = () => donateModal.style.display = "none";
+        window.onclick = (event) => {
+            if (event.target === donateModal) {
+                donateModal.style.display = "none";
+            }
+        }
+    }
+
     setupEventListeners() {
+        // Theme toggle
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            this.toggleTheme();
+        });
+
         // Canvas click event
         this.canvas.addEventListener('click', (e) => {
             const rect = this.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            const label = y > x ? 1 : 0; // Mesma lógica de classificação dos pontos aleatórios
+            const label = y > x ? 1 : 0;
             this.renderer.addPoint(x, y, label);
         });
 
@@ -40,6 +94,7 @@ class App {
 
         document.getElementById('trainOneEpoch').addEventListener('click', () => {
             if (this.renderer.points.length === 0) return;
+            this.epochs++;
             const { error, accuracy } = this.perceptron.trainEpoch(this.renderer.points);
             this.updateUI(error, accuracy);
             this.renderer.update();
@@ -51,8 +106,8 @@ class App {
             this.isTraining = true;
             const { epochs, finalError } = this.perceptron.trainUntilConvergence(this.renderer.points);
             
-            // Atualização visual durante o treinamento
             for (let i = 0; i < epochs; i++) {
+                this.epochs++;
                 const { error, accuracy } = this.perceptron.trainEpoch(this.renderer.points);
                 this.updateUI(error, accuracy);
                 this.renderer.update();
@@ -62,11 +117,35 @@ class App {
             this.isTraining = false;
         });
 
+        document.getElementById('autoTrain').addEventListener('click', () => {
+            if (this.renderer.points.length === 0) return;
+            
+            if (this.autoTrainInterval) {
+                clearInterval(this.autoTrainInterval);
+                this.autoTrainInterval = null;
+                document.getElementById('autoTrain').textContent = 'Auto Treinamento';
+            } else {
+                this.autoTrainInterval = setInterval(() => {
+                    this.epochs++;
+                    const { error, accuracy } = this.perceptron.trainEpoch(this.renderer.points);
+                    this.updateUI(error, accuracy);
+                    this.renderer.update();
+                }, 100);
+                document.getElementById('autoTrain').textContent = 'Parar Auto Treinamento';
+            }
+        });
+
         document.getElementById('reset').addEventListener('click', () => {
+            if (this.autoTrainInterval) {
+                clearInterval(this.autoTrainInterval);
+                this.autoTrainInterval = null;
+                document.getElementById('autoTrain').textContent = 'Auto Treinamento';
+            }
             this.perceptron = new Perceptron(this.learningRate);
             this.renderer.setPerceptron(this.perceptron);
             this.renderer.points = [];
             this.renderer.update();
+            this.epochs = 0;
             this.updateUI();
         });
 
@@ -94,6 +173,8 @@ class App {
             `${(error * 100).toFixed(1)}%`;
         document.getElementById('epochAccuracy').textContent = 
             `${(accuracy * 100).toFixed(1)}%`;
+        document.getElementById('epochs').textContent = 
+            this.epochs;
     }
 }
 

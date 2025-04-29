@@ -1,3 +1,5 @@
+import { Point } from './point.js';
+
 export class Renderer {
     constructor(canvas) {
         this.canvas = canvas;
