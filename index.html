@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Perceptron</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Simulador de Perceptron</h1>
+            <p class="subtitle">Visualize o aprendizado de um Perceptron de camada única</p>
+        </header>
+
+        <main>
+            <div class="simulator-container">
+                <div class="canvas-container">
+                    <canvas id="perceptronCanvas"></canvas>
+                </div>
+                
+                <div class="controls-container">
+                    <div class="control-group">
+                        <button id="randomData" class="btn">Gerar Dados Aleatórios</button>
+                        <button id="trainOneEpoch" class="btn">Treinar 1 Época</button>
+                        <button id="trainUntilConvergence" class="btn">Treinar até Convergência</button>
+                        <button id="reset" class="btn">Resetar</button>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="learningRate">Taxa de Aprendizado:</label>
+                        <input type="range" id="learningRate" min="0.001" max="1" step="0.001" value="0.1">
+                        <span id="learningRateValue">0.1</span>
+                    </div>
+
+                    <div class="info-panel">
+                        <h3>Informações do Modelo</h3>
+                        <div class="info-group">
+                            <p>Pesos: <span id="weights">[0, 0]</span></p>
+                            <p>Taxa de Erro: <span id="errorRate">0%</span></p>
+                            <p>Acertos por Época: <span id="epochAccuracy">0</span></p>
+                        </div>
+                    </div>
+
+                    <div class="explanation-panel">
+                        <h3>Como Funciona</h3>
+                        <p>O Perceptron é um algoritmo de aprendizado supervisionado que aprende a classificar pontos em duas classes (0 e 1).</p>
+                        <p>Clique no canvas para adicionar pontos e observe como a reta de decisão se ajusta durante o treinamento.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html> 

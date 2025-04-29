@@ -1,0 +1,21 @@
+{
+  "name": "perceptron-simulator",
+  "version": "1.0.0",
+  "description": "Simulador interativo do Perceptron de Frank Rosenblatt",
+  "main": "index.html",
+  "scripts": {
+    "start": "live-server --port=3000 --no-browser",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "perceptron",
+    "machine-learning",
+    "neural-networks",
+    "education"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+} 
