@@ -13,6 +13,9 @@ class App {
         this.epochs = 0;
         this.currentTheme = localStorage.getItem('theme') || 'light';
 
+        // Usar o log container existente no HTML
+        this.logContainer = document.querySelector('.log-container');
+
         this.init();
     }
 
@@ -73,10 +76,27 @@ class App {
     }
 
     setupEventListeners() {
-        // Theme toggle
-        document.getElementById('themeToggle').addEventListener('click', () => {
-            this.toggleTheme();
-        });
+        // Verificar se os elementos existem antes de adicionar os event listeners
+        const elements = {
+            randomData: document.getElementById('randomData'),
+            trainOneEpoch: document.getElementById('trainOneEpoch'),
+            trainUntilConvergence: document.getElementById('trainUntilConvergence'),
+            autoTrain: document.getElementById('autoTrain'),
+            reset: document.getElementById('reset'),
+            themeToggle: document.getElementById('themeToggle'),
+            aboutBtn: document.getElementById('aboutBtn'),
+            donateBtn: document.getElementById('donateBtn'),
+            learningRate: document.getElementById('learningRate'),
+            learningRateValue: document.getElementById('learningRateValue')
+        };
+
+        // Verificar se todos os elementos necessários existem
+        for (const [id, element] of Object.entries(elements)) {
+            if (!element) {
+                console.error(`Elemento com ID '${id}' não encontrado`);
+                return;
+            }
+        }
 
         // Canvas click event
         this.canvas.addEventListener('click', (e) => {
@@ -85,61 +105,93 @@ class App {
             const y = e.clientY - rect.top;
             const label = y > x ? 1 : 0;
             this.renderer.addPoint(x, y, label);
+            this.log(`Ponto adicionado: (${x.toFixed(2)}, ${y.toFixed(2)}) - Classe ${label}`);
         });
 
-        // Botões de controle
-        document.getElementById('randomData').addEventListener('click', () => {
+        // Random data generation
+        elements.randomData.addEventListener('click', () => {
             this.renderer.generateRandomPoints(50);
+            this.log('50 pontos aleatórios gerados');
         });
 
-        document.getElementById('trainOneEpoch').addEventListener('click', () => {
-            if (this.renderer.points.length === 0) return;
+        // Single epoch training
+        elements.trainOneEpoch.addEventListener('click', () => {
+            if (this.renderer.points.length === 0) {
+                this.log('Erro: Nenhum ponto para treinar', 'error');
+                return;
+            }
             this.epochs++;
             const { error, accuracy } = this.perceptron.trainEpoch(this.renderer.points);
             this.updateUI(error, accuracy);
             this.renderer.update();
+            this.log(`Época ${this.epochs}: Erro = ${(error * 100).toFixed(2)}%, Acurácia = ${(accuracy * 100).toFixed(2)}%`);
         });
 
-        document.getElementById('trainUntilConvergence').addEventListener('click', async () => {
-            if (this.renderer.points.length === 0 || this.isTraining) return;
+        // Train until convergence
+        elements.trainUntilConvergence.addEventListener('click', async () => {
+            if (this.renderer.points.length === 0) {
+                this.log('Erro: Nenhum ponto para treinar', 'error');
+                return;
+            }
             
-            this.isTraining = true;
+            this.log('Iniciando treinamento até convergência...');
             const { epochs, finalError } = this.perceptron.trainUntilConvergence(this.renderer.points);
+            this.log(`Treinamento concluído após ${epochs} épocas. Erro final: ${(finalError * 100).toFixed(2)}%`);
+        });
+
+        // Auto training
+        elements.autoTrain.addEventListener('click', async () => {
+            if (this.renderer.points.length === 0) {
+                this.log('Erro: Nenhum ponto para treinar', 'error');
+                return;
+            }
+
+            if (this.autoTrainInterval) {
+                clearInterval(this.autoTrainInterval);
+                this.autoTrainInterval = null;
+                elements.autoTrain.textContent = 'Auto Treinamento';
+                elements.autoTrain.classList.remove('btn-active');
+                this.log('Auto treinamento interrompido');
+                return;
+            }
+
+            elements.autoTrain.textContent = 'Parar Auto Treinamento';
+            elements.autoTrain.classList.add('btn-active');
+            this.log('Iniciando auto treinamento...');
             
-            for (let i = 0; i < epochs; i++) {
+            const startTime = Date.now();
+            const maxDuration = 60000; // 60 segundos em milissegundos
+            
+            const trainEpoch = async () => {
+                if (Date.now() - startTime >= maxDuration) {
+                    clearInterval(this.autoTrainInterval);
+                    this.autoTrainInterval = null;
+                    elements.autoTrain.textContent = 'Auto Treinamento';
+                    elements.autoTrain.classList.remove('btn-active');
+                    this.log('Auto treinamento concluído após 60 segundos');
+                    return;
+                }
+
                 this.epochs++;
                 const { error, accuracy } = this.perceptron.trainEpoch(this.renderer.points);
                 this.updateUI(error, accuracy);
                 this.renderer.update();
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-            
-            this.isTraining = false;
+                this.log(`Época ${this.epochs}: Erro = ${(error * 100).toFixed(2)}%, Acurácia = ${(accuracy * 100).toFixed(2)}%`);
+            };
+
+            // Executa o primeiro treinamento imediatamente
+            await trainEpoch();
+
+            // Configura o intervalo para executar a cada 1 segundo
+            this.autoTrainInterval = setInterval(trainEpoch, 1000);
         });
 
-        document.getElementById('autoTrain').addEventListener('click', () => {
-            if (this.renderer.points.length === 0) return;
-            
+        // Reset
+        elements.reset.addEventListener('click', () => {
             if (this.autoTrainInterval) {
                 clearInterval(this.autoTrainInterval);
                 this.autoTrainInterval = null;
-                document.getElementById('autoTrain').textContent = 'Auto Treinamento';
-            } else {
-                this.autoTrainInterval = setInterval(() => {
-                    this.epochs++;
-                    const { error, accuracy } = this.perceptron.trainEpoch(this.renderer.points);
-                    this.updateUI(error, accuracy);
-                    this.renderer.update();
-                }, 100);
-                document.getElementById('autoTrain').textContent = 'Parar Auto Treinamento';
-            }
-        });
-
-        document.getElementById('reset').addEventListener('click', () => {
-            if (this.autoTrainInterval) {
-                clearInterval(this.autoTrainInterval);
-                this.autoTrainInterval = null;
-                document.getElementById('autoTrain').textContent = 'Auto Treinamento';
+                elements.autoTrain.textContent = 'Auto Treinamento';
             }
             this.perceptron = new Perceptron(this.learningRate);
             this.renderer.setPerceptron(this.perceptron);
@@ -147,16 +199,45 @@ class App {
             this.renderer.update();
             this.epochs = 0;
             this.updateUI();
+            this.log('Simulador reiniciado');
         });
 
-        // Controle de taxa de aprendizado
-        const learningRateInput = document.getElementById('learningRate');
-        const learningRateValue = document.getElementById('learningRateValue');
+        // Theme toggle
+        elements.themeToggle.addEventListener('click', () => {
+            this.toggleTheme();
+        });
 
-        learningRateInput.addEventListener('input', (e) => {
+        // About modal
+        elements.aboutBtn.addEventListener('click', () => {
+            document.getElementById('aboutModal').style.display = 'block';
+        });
+
+        // Donate modal
+        elements.donateBtn.addEventListener('click', () => {
+            document.getElementById('donateModal').style.display = 'block';
+        });
+
+        // Learning rate control
+        elements.learningRate.addEventListener('input', (e) => {
             this.learningRate = parseFloat(e.target.value);
-            learningRateValue.textContent = this.learningRate.toFixed(3);
+            elements.learningRateValue.textContent = this.learningRate.toFixed(3);
             this.perceptron.learningRate = this.learningRate;
+        });
+
+        // Close modals
+        document.querySelectorAll('.close').forEach(closeBtn => {
+            closeBtn.addEventListener('click', () => {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.style.display = 'none';
+                });
+            });
+        });
+
+        // Close modals when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
         });
 
         // Resize handler
@@ -175,6 +256,20 @@ class App {
             `${(accuracy * 100).toFixed(1)}%`;
         document.getElementById('epochs').textContent = 
             this.epochs;
+    }
+
+    // Método para adicionar log
+    log(message, type = 'info') {
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry ${type}`;
+        logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        this.logContainer.appendChild(logEntry);
+        this.logContainer.scrollTop = this.logContainer.scrollHeight;
+    }
+
+    // Método para limpar logs
+    clearLogs() {
+        this.logContainer.innerHTML = '';
     }
 }
 
