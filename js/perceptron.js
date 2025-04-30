@@ -1,8 +1,10 @@
 export class Perceptron {
-    constructor(learningRate = 0.1) {
-        this.weights = [Math.random() * 2 - 1, Math.random() * 2 - 1];
-        this.bias = Math.random() * 2 - 1;
-        this.learningRate = learningRate;
+    constructor(inputSize) {
+        this.weights = new Array(inputSize + 1).fill(0).map(() => Math.random() * 2 - 1);
+        this.learningRate = 0.1;
+        this.lastError = 1;
+        this.convergenceThreshold = 0.01;
+        this.isGeoMode = false;
     }
 
     // Função de ativação (step function)
@@ -11,8 +13,11 @@ export class Perceptron {
     }
 
     // Predição para um ponto
-    predict(point) {
-        const sum = point.x * this.weights[0] + point.y * this.weights[1] + this.bias;
+    predict(inputs) {
+        let sum = 0;
+        for (let i = 0; i < this.weights.length; i++) {
+            sum += this.weights[i] * inputs[i];
+        }
         return this.activate(sum);
     }
 
@@ -24,27 +29,52 @@ export class Perceptron {
         // Atualização dos pesos
         this.weights[0] += this.learningRate * error * point.x;
         this.weights[1] += this.learningRate * error * point.y;
-        this.bias += this.learningRate * error;
+        this.weights[2] += this.learningRate * error;
 
         return error;
     }
 
     // Treinamento para uma época completa
     trainEpoch(points) {
+        let errors = 0;
         let totalError = 0;
-        let correctPredictions = 0;
 
         for (const point of points) {
-            const error = this.train(point);
-            totalError += Math.abs(error);
-            if (error === 0) {
-                correctPredictions++;
+            // Normalizar as entradas para evitar overflow
+            const normalizedX = point.x / 1000;  // Usando um valor fixo para normalização
+            const normalizedY = point.y / 1000;
+            
+            const prediction = this.predict([normalizedX, normalizedY]);
+            const error = point.label - prediction;
+            
+            if (error !== 0) {
+                errors++;
+                totalError += Math.abs(error);
+                
+                // Atualizar pesos com taxa de aprendizado adaptativa
+                const learningRate = this.learningRate * (1 - Math.abs(error));
+                
+                // Atualizar pesos com momentum
+                this.weights[0] += learningRate * error * normalizedX;
+                this.weights[1] += learningRate * error * normalizedY;
+                this.weights[2] += learningRate * error;
+                
+                // Limitar os pesos para evitar overflow
+                this.weights = this.weights.map(w => Math.max(-1, Math.min(1, w)));
             }
         }
 
+        // Calcular métricas
+        const errorRate = totalError / points.length;
+        const accuracy = 1 - (errors / points.length);
+        
+        // Atualizar último erro
+        this.lastError = errorRate;
+
         return {
-            error: totalError / points.length,
-            accuracy: correctPredictions / points.length
+            error: errorRate,
+            accuracy: accuracy,
+            errors: errors
         };
     }
 
@@ -72,11 +102,34 @@ export class Perceptron {
     }
 
     // Obter a equação da reta de decisão
-    getDecisionLine(canvasWidth) {
-        const x1 = 0;
-        const y1 = (-this.weights[0] * x1 - this.bias) / this.weights[1];
-        const x2 = canvasWidth;
-        const y2 = (-this.weights[0] * x2 - this.bias) / this.weights[1];
-        return { x1, y1, x2, y2 };
+    getDecisionLine() {
+        if (this.isGeoMode) {
+            // Para modo geográfico, retornamos os pesos diretamente
+            return {
+                lat: this.weights[0],
+                lon: this.weights[1],
+                bias: this.weights[2]
+            };
+        } else {
+            // Para modo cartesiano, calculamos a linha de decisão
+            const w1 = this.weights[0];
+            const w2 = this.weights[1];
+            const bias = this.weights[2];
+            
+            // A linha de decisão é w1*x + w2*y + bias = 0
+            // Podemos reescrever como y = (-w1/w2)*x - (bias/w2)
+            return {
+                slope: -w1/w2,
+                intercept: -bias/w2
+            };
+        }
+    }
+
+    getConvergenceProgress() {
+        return Math.min(1, 1 - this.lastError / this.convergenceThreshold);
+    }
+
+    setGeoMode(isGeoMode) {
+        this.isGeoMode = isGeoMode;
     }
 } 

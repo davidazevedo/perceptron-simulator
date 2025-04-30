@@ -42,7 +42,16 @@
         <main>
             <div class="simulator-container">
                 <div class="canvas-container">
-                    <canvas id="perceptronCanvas"></canvas>
+                    <div class="mode-toggle-container">
+                        <button id="modeToggle" class="mode-toggle">
+                            <i class="fas fa-globe"></i>
+                            <span>Modo Geográfico</span>
+                        </button>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <canvas id="perceptronCanvas" class="cartesian-canvas"></canvas>
+                        <canvas id="geoCanvas" class="geo-canvas" style="display: none;"></canvas>
+                    </div>
                     <div class="canvas-controls">
                         <button id="randomData" class="btn">
                             <i class="fas fa-random"></i>
@@ -65,7 +74,13 @@
                             <span class="btn-label">Resetar</span>
                         </button>
                     </div>
-                    <div class="log-container"></div>
+                    <div id="log" class="log-container">
+                        <div class="log-header">
+                            <h3>Log de Atividades</h3>
+                            <button id="clearLog" class="clear-log">Limpar</button>
+                        </div>
+                        <div class="log-content"></div>
+                    </div>
                 </div>
                 
                 <div class="controls-container">
@@ -99,7 +114,7 @@
                     <div class="info-panel">
                         <h3>
                             <i class="fas fa-chart-line"></i>
-                            Informações do Modelo
+                            Status do Modelo
                         </h3>
                         <div class="info-group">
                             <div class="info-item">
@@ -119,9 +134,9 @@
                             <div class="info-item">
                                 <span class="info-label">
                                     <i class="fas fa-check-circle"></i>
-                                    Acertos por Época
+                                    Acurácia
                                 </span>
-                                <span id="epochAccuracy" class="info-value">0</span>
+                                <span id="epochAccuracy" class="info-value">0%</span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">
@@ -130,6 +145,9 @@
                                 </span>
                                 <span id="epochs" class="info-value">0</span>
                             </div>
+                        </div>
+                        <div class="convergence-bar">
+                            <div id="convergenceProgress" class="convergence-progress" style="width: 0%"></div>
                         </div>
                     </div>
 
@@ -203,6 +221,25 @@
                     <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2ZmZiIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5kYXZpZGVuZ2luZUBnbWFpbC5jb208L3RleHQ+PC9zdmc+" alt="QR Code PIX" class="pix-qr">
                 </div>
                 <p class="thank-you">Muito obrigado pelo seu apoio! ☕</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="decisionTooltip" class="decision-tooltip">
+        <div class="tooltip-content">
+            <div class="tooltip-section">
+                <h4>Equação da Linha</h4>
+                <p id="lineEquation">y = ax + b</p>
+            </div>
+            <div class="tooltip-section">
+                <h4>Parâmetros</h4>
+                <p id="weightsInfo">Pesos: [w1, w2]</p>
+                <p id="biasInfo">Bias: b</p>
+            </div>
+            <div class="tooltip-section">
+                <h4>Geometria</h4>
+                <p id="angleInfo">Ângulo: θ°</p>
+                <p id="distanceInfo">Distância da origem: d</p>
             </div>
         </div>
     </div>

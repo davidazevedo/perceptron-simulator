@@ -17,5 +17,8 @@
   "license": "MIT",
   "devDependencies": {
     "live-server": "^1.2.2"
+  },
+  "dependencies": {
+    "perceptron-simulator": "file:"
   }
-} 
+}
