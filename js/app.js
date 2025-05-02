@@ -8,6 +8,7 @@ class App {
         this.canvas = document.getElementById('perceptronCanvas');
         this.geoCanvas = document.getElementById('geoCanvas');
         this.perceptron = new Perceptron(2);
+        this.perceptron.resetWeights();
         this.renderer = new Renderer(this.canvas);
         this.geoRenderer = new Renderer(this.geoCanvas);
         this.geoMode = new GeoMode(this.geoCanvas);
@@ -167,7 +168,7 @@ class App {
 
         // Theme toggle
         elements.themeToggle.addEventListener('click', () => {
-            this.toggleTheme();
+            this.toggleMode();
         });
 
         // About modal
@@ -287,14 +288,23 @@ class App {
         // Preservar os pontos ao alternar modos
         const currentPoints = this.isGeoMode ? this.renderer.points : this.geoRenderer.points;
         
-        // Resetar o estado com o número correto de pesos
-        this.resetState();
+        // Resetar os pesos mantendo o objeto perceptron
+        this.perceptron.resetWeights();
+        this.perceptron.setGeoMode(this.isGeoMode);
+        
+        // Sincronizar renderers com o novo modo
+        this.renderer.setMode(this.isGeoMode);
+        this.geoRenderer.setMode(this.isGeoMode);
         
         // Restaurar os pontos
         if (this.isGeoMode) {
             this.geoRenderer.points = currentPoints;
+            this.geoRenderer.setPerceptron(this.perceptron);
+            this.geoRenderer.draw();
         } else {
             this.renderer.points = currentPoints;
+            this.renderer.setPerceptron(this.perceptron);
+            this.renderer.draw();
         }
         
         // Atualizar a classe do container para alternar entre os modos
@@ -303,16 +313,10 @@ class App {
             container.classList.add('geo-mode');
             this.geoCanvas.style.display = 'block';
             this.canvas.style.display = 'none';
-            this.geoRenderer.init();
-            this.geoRenderer.setPerceptron(this.perceptron);
-            this.geoRenderer.draw();
         } else {
             container.classList.remove('geo-mode');
             this.canvas.style.display = 'block';
             this.geoCanvas.style.display = 'none';
-            this.renderer.init();
-            this.renderer.setPerceptron(this.perceptron);
-            this.renderer.draw();
         }
         
         this.log(`Modo alterado para: ${this.isGeoMode ? 'Geográfico' : 'Cartesiano'}`, 'info');
@@ -337,8 +341,8 @@ class App {
     }
 
     resetState() {
-        // Reset perceptron com o número correto de pesos baseado no modo atual
-        this.perceptron = new Perceptron(this.isGeoMode ? 3 : 2);
+        // Reset apenas os pesos do perceptron, mantendo o objeto
+        this.perceptron.resetWeights();
         this.epochs = 0;
         
         // Reset UI
@@ -358,10 +362,12 @@ class App {
         const convergenceProgress = document.getElementById('convergenceProgress');
         convergenceProgress.style.width = '0%';
         
-        // Redraw
+        // Sincronizar renderer com o perceptron atualizado
         if (this.isGeoMode) {
+            this.geoRenderer.setPerceptron(this.perceptron);
             this.geoRenderer.draw();
         } else {
+            this.renderer.setPerceptron(this.perceptron);
             this.renderer.draw();
         }
     }
@@ -418,13 +424,13 @@ class App {
             const { lat, lon } = this.geoMode.canvasToGeo(x, y);
             const label = Math.random() > 0.5 ? 1 : 0;
             if (!renderer.points) renderer.points = [];
-            renderer.points.push({ lat, lon, label });
+            renderer.points.push(Point.fromRaw(lat, lon, label, true));
             renderer.draw();
             this.log(`Ponto adicionado: (${lat.toFixed(1)}°, ${lon.toFixed(1)}°)`, 'info');
         } else {
             const label = y > x ? 1 : 0;
             if (!renderer.points) renderer.points = [];
-            renderer.points.push({ x, y, label });
+            renderer.points.push(Point.fromRaw(x, y, label));
             renderer.draw();
             this.log(`Ponto adicionado: (${x.toFixed(1)}, ${y.toFixed(1)})`, 'info');
         }

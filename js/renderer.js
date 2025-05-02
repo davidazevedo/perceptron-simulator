@@ -141,8 +141,13 @@ export class Renderer {
         // Calcular distância da origem
         const distanceFromOrigin = Math.abs(bias) / Math.sqrt(weights[0] * weights[0] + weights[1] * weights[1]);
 
-        // Atualizar conteúdo do tooltip usando os IDs corretos
-        document.getElementById('lineEquation').textContent = `y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)}`;
+        // Atualizar conteúdo do tooltip
+        if (!isFinite(slope)) {
+            document.getElementById('lineEquation').textContent = 'x = constante (reta vertical)';
+        } else {
+            document.getElementById('lineEquation').textContent = `y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)}`;
+        }
+        
         document.getElementById('weightsInfo').textContent = `Pesos: [${weights[0].toFixed(3)}, ${weights[1].toFixed(3)}]`;
         document.getElementById('biasInfo').textContent = `Bias: ${bias.toFixed(3)}`;
         document.getElementById('angleInfo').textContent = `Ângulo: ${angle.toFixed(1)}°`;
@@ -244,17 +249,20 @@ export class Renderer {
 
     // Gerar pontos aleatórios
     generateRandomPoints(count) {
-        this.points = [];
+        if (!this.points) {
+            this.points = [];
+        }
+        
         for (let i = 0; i < count; i++) {
             if (this.isGeoMode && this.geoMode) {
                 const { lat, lon } = this.geoMode.generateRandomPoint();
                 const label = Math.random() > 0.5 ? 1 : 0;
-                this.points.push({ lat, lon, label });
+                this.points.push(Point.fromRaw(lat, lon, label, true));
             } else {
                 const x = Math.random() * this.canvas.width;
                 const y = Math.random() * this.canvas.height;
-                const label = Math.random() > 0.5 ? 1 : 0;
-                this.points.push({ x, y, label });
+                const label = y > x ? 1 : 0;
+                this.points.push(Point.fromRaw(x, y, label));
             }
         }
         this.draw();
@@ -296,68 +304,74 @@ export class Renderer {
     }
 
     draw() {
+        // Limpar o canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
+        // Desenhar fundo (grade ou mapa)
         if (this.isGeoMode && this.geoMode) {
             this.geoMode.draw();
         } else {
             this.drawGrid(false);
         }
         
-        this.drawPoints();
+        // Desenhar a linha de decisão primeiro (para ficar atrás dos pontos)
         this.drawDecisionBoundary();
+        
+        // Desenhar os pontos
+        this.drawPoints();
+        
+        // Desenhar elementos de UI
         this.drawConvergenceBar();
         this.drawInfoPanel();
         this.drawEpochAnimation();
+        
+        // Atualizar estado da animação
         this.updateAnimationState();
     }
 
     drawDecisionBoundary() {
         if (!this.perceptron || !this.perceptron.weights || this.perceptron.weights.length < 2) {
+            console.warn("Perceptron não inicializado ou com poucos pesos.");
             return;
         }
-
+    
         const weights = this.perceptron.weights;
         const bias = weights[weights.length - 1];
-        const { slope, intercept } = this.perceptron.getDecisionLine();
-
+    
+        // Garantir que w2 != 0 antes de calcular slope/intercept
+        const epsilon = 1e-6;
+        const w1 = weights[0];
+        const w2 = Math.abs(weights[1]) < epsilon ? epsilon : weights[1];
+        const slope = -w1 / w2;
+        const intercept = -bias / w2;
+    
+        // Calcular pontos da linha de decisão
+        const x1 = 0;
+        const y1 = slope * x1 + intercept;
+        const x2 = this.canvas.width;
+        const y2 = slope * x2 + intercept;
+    
+        // Garantir que os pontos estejam dentro do canvas
+        const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+        const y1Clamped = clamp(y1, 0, this.canvas.height);
+        const y2Clamped = clamp(y2, 0, this.canvas.height);
+    
+        // Desenhar a linha
         this.ctx.beginPath();
+        this.ctx.moveTo(x1, y1Clamped);
+        this.ctx.lineTo(x2, y2Clamped);
         this.ctx.strokeStyle = '#4CAF50';
         this.ctx.lineWidth = 2;
-
-        if (this.isGeoMode && this.geoMode) {
-            // Desenhar linha de decisão no modo geográfico
-            const start = this.geoMode.geoToCanvas(-90, -180);
-            const end = this.geoMode.geoToCanvas(90, 180);
-            
-            this.ctx.moveTo(start.x, start.y);
-            this.ctx.lineTo(end.x, end.y);
-
-            // Desenhar ponto de interceptação (bias)
-            const intercept = this.geoMode.geoToCanvas(0, 0);
-            this.drawBiasPoint(intercept.x, intercept.y);
-        } else {
-            // Desenhar linha de decisão no modo cartesiano
-            const x1 = 0;
-            const y1 = slope * x1 + intercept;
-            const x2 = this.canvas.width;
-            const y2 = slope * x2 + intercept;
-            
-            this.ctx.moveTo(x1, y1);
-            this.ctx.lineTo(x2, y2);
-
-            // Desenhar ponto de interceptação (bias)
-            const interceptX = 0;
-            const interceptY = intercept;
-            this.drawBiasPoint(interceptX, interceptY);
-        }
-
         this.ctx.stroke();
-
-        // Adicionar tooltip para a reta de decisão
+    
+        // Desenhar ponto de interceptação no eixo Y
+        this.drawBiasPoint(0, y1Clamped);
+    
+        // Atualizar tooltip
         this.updateDecisionLineTooltip(slope, intercept, weights, bias);
     }
-
+    
+    
     drawInfoPanel() {
         if (!this.perceptron) return;
 
