@@ -8,12 +8,20 @@ class App {
         this.canvas = document.getElementById('perceptronCanvas');
         this.geoCanvas = document.getElementById('geoCanvas');
         this.perceptron = new Perceptron(2);
-        this.perceptron.resetWeights();
         this.renderer = new Renderer(this.canvas);
         this.geoRenderer = new Renderer(this.geoCanvas);
-        this.geoMode = new GeoMode(this.geoCanvas);
-        this.geoRenderer.setGeoMode(this.geoMode);
+        
+        // Set up renderers with perceptron
+        this.renderer.setPerceptron(this.perceptron);
+        this.geoRenderer.setPerceptron(this.perceptron);
+        
+        // Initialize mode
         this.isGeoMode = false;
+        this.renderer.setGeoMode(false);
+        this.geoRenderer.setGeoMode(false);
+        
+        // Initialize other properties
+        this.points = [];
         this.learningRate = 0.1;
         this.isTraining = false;
         this.autoTrainInterval = null;
@@ -211,6 +219,11 @@ class App {
             this.geoRenderer.init();
             this.geoRenderer.update();
         });
+
+        // Adicionar listener para o botão de alternar modo
+        document.getElementById('modeToggle').addEventListener('click', () => {
+            this.toggleMode();
+        });
     }
 
     updateUI(error = 0, accuracy = 0) {
@@ -282,44 +295,58 @@ class App {
     }
 
     toggleMode() {
-        this.isGeoMode = !this.isGeoMode;
-        this.updateModeToggle();
-        
-        // Preservar os pontos ao alternar modos
-        const currentPoints = this.isGeoMode ? this.renderer.points : this.geoRenderer.points;
-        
-        // Resetar os pesos mantendo o objeto perceptron
+        // Parar o auto treinamento se estiver ativo
+        if (this.autoTrainInterval) {
+            clearInterval(this.autoTrainInterval);
+            this.autoTrainInterval = null;
+            const autoTrainBtn = document.getElementById('autoTrain');
+            autoTrainBtn.innerHTML = '<i class="fas fa-play"></i><span class="btn-label">Auto Treinamento</span>';
+        }
+
+        // Limpar os dados existentes
+        this.points = [];
+        this.renderer.points = [];
+        this.geoRenderer.points = [];
         this.perceptron.resetWeights();
-        this.perceptron.setGeoMode(this.isGeoMode);
+        this.epochs = 0;
+
+        // Alternar o modo
+        this.isGeoMode = !this.isGeoMode;
+        this.perceptron.isGeoMode = this.isGeoMode;
         
-        // Sincronizar renderers com o novo modo
+        // Atualizar renderers
         this.renderer.setMode(this.isGeoMode);
         this.geoRenderer.setMode(this.isGeoMode);
         
-        // Restaurar os pontos
+        // Atualizar UI
+        const modeToggle = document.getElementById('modeToggle');
+        const icon = modeToggle.querySelector('i');
+        const text = modeToggle.querySelector('span');
+        
         if (this.isGeoMode) {
-            this.geoRenderer.points = currentPoints;
-            this.geoRenderer.setPerceptron(this.perceptron);
+            icon.className = 'fas fa-globe';
+            text.textContent = 'Modo Geográfico';
+            modeToggle.classList.add('active');
+        } else {
+            icon.className = 'fas fa-chart-line';
+            text.textContent = 'Modo Cartesiano';
+            modeToggle.classList.remove('active');
+        }
+        
+        // Atualizar visibilidade dos canvases
+        this.canvas.style.display = this.isGeoMode ? 'none' : 'block';
+        this.geoCanvas.style.display = this.isGeoMode ? 'block' : 'none';
+        
+        // Atualizar a visualização
+        if (this.isGeoMode) {
             this.geoRenderer.draw();
         } else {
-            this.renderer.points = currentPoints;
-            this.renderer.setPerceptron(this.perceptron);
             this.renderer.draw();
         }
-        
-        // Atualizar a classe do container para alternar entre os modos
-        const container = document.querySelector('.canvas-container');
-        if (this.isGeoMode) {
-            container.classList.add('geo-mode');
-            this.geoCanvas.style.display = 'block';
-            this.canvas.style.display = 'none';
-        } else {
-            container.classList.remove('geo-mode');
-            this.canvas.style.display = 'block';
-            this.geoCanvas.style.display = 'none';
-        }
-        
-        this.log(`Modo alterado para: ${this.isGeoMode ? 'Geográfico' : 'Cartesiano'}`, 'info');
+
+        // Atualizar UI
+        this.updateUI();
+        this.clearLogs();
     }
 
     updateModeToggle() {
@@ -413,27 +440,23 @@ class App {
         }
     }
 
-    handleCanvasClick(e) {
-        const canvas = this.isGeoMode ? this.geoCanvas : this.canvas;
-        const renderer = this.isGeoMode ? this.geoRenderer : this.renderer;
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
+    handleCanvasClick(event) {
+        const rect = this.isGeoMode ? this.geoCanvas.getBoundingClientRect() : this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        
+        let point;
         if (this.isGeoMode) {
             const { lat, lon } = this.geoMode.canvasToGeo(x, y);
-            const label = Math.random() > 0.5 ? 1 : 0;
-            if (!renderer.points) renderer.points = [];
-            renderer.points.push(Point.fromRaw(lat, lon, label, true));
-            renderer.draw();
-            this.log(`Ponto adicionado: (${lat.toFixed(1)}°, ${lon.toFixed(1)}°)`, 'info');
+            point = { lat, lon, label: 1, isGeo: true };
         } else {
-            const label = y > x ? 1 : 0;
-            if (!renderer.points) renderer.points = [];
-            renderer.points.push(Point.fromRaw(x, y, label));
-            renderer.draw();
-            this.log(`Ponto adicionado: (${x.toFixed(1)}, ${y.toFixed(1)})`, 'info');
+            point = { x, y, label: 1, isGeo: false };
         }
+        
+        this.points.push(point);
+        this.renderer.points = this.points;
+        this.geoRenderer.points = this.points;
+        this.draw();
     }
 
     initializeLog() {
@@ -505,6 +528,14 @@ class App {
         const logContent = this.logContainer.querySelector('.log-content');
         if (logContent) {
             logContent.innerHTML = '';
+        }
+    }
+
+    draw() {
+        if (this.isGeoMode) {
+            this.geoRenderer.draw();
+        } else {
+            this.renderer.draw();
         }
     }
 }

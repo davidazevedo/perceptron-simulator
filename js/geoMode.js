@@ -1,8 +1,13 @@
 export class GeoMode {
-    constructor(canvas) {
+    constructor(canvas, ctx) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.mapImage = null;
+        this.ctx = ctx;
+        this.mapImage = new Image();
+        this.mapImage.src = 'assets/world-map.svg';
+        this.mapImage.onerror = () => {
+            console.error('Failed to load world map image');
+            this.mapImage = null;
+        };
         this.mapLoaded = false;
         this.mapBounds = {
             minLat: -90,
@@ -15,7 +20,8 @@ export class GeoMode {
 
     async loadMap() {
         try {
-            const response = await fetch('assets/world-map.svg');
+            // Usar o caminho absoluto para o SVG
+            const response = await fetch('/assets/world-map.svg');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -29,7 +35,8 @@ export class GeoMode {
             this.mapImage.onload = () => {
                 this.mapLoaded = true;
                 URL.revokeObjectURL(url); // Limpar o URL do blob
-                this.draw();
+                this.drawMap();
+                console.log('Mapa carregado com sucesso');
             };
             this.mapImage.onerror = (error) => {
                 console.error('Erro ao carregar a imagem:', error);
@@ -45,70 +52,109 @@ export class GeoMode {
         }
     }
 
-    draw() {
+    drawMap() {
+        if (!this.mapImage || !this.ctx) return;
+        
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        if (this.mapLoaded && this.mapImage && this.mapImage.complete) {
-            const scale = Math.min(
-                this.canvas.width / this.mapImage.width,
-                this.canvas.height / this.mapImage.height
-            );
-            const x = (this.canvas.width - this.mapImage.width * scale) / 2;
-            const y = (this.canvas.height - this.mapImage.height * scale) / 2;
-            
-            this.ctx.drawImage(
-                this.mapImage,
-                x, y,
-                this.mapImage.width * scale,
-                this.mapImage.height * scale
-            );
-        }
-
-        this.drawCoordinateGrid();
+        
+        // Desenhar o mapa
+        this.ctx.drawImage(this.mapImage, 0, 0, this.canvas.width, this.canvas.height);
+        
+        // Desenhar grade
+        this.drawGrid();
     }
 
-    drawCoordinateGrid() {
-        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    drawGrid() {
+        if (!this.ctx) return;
+
+        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
         this.ctx.lineWidth = 1;
-        this.ctx.font = '12px Arial';
-        this.ctx.fillStyle = 'black';
 
         // Linhas de latitude
-        for (let lat = -90; lat <= 90; lat += 15) {
-            const y = this.latitudeToY(lat);
+        for (let lat = -90; lat <= 90; lat += 30) {
+            const y = this.latToY(lat);
             this.ctx.beginPath();
             this.ctx.moveTo(0, y);
             this.ctx.lineTo(this.canvas.width, y);
             this.ctx.stroke();
-
-            this.ctx.fillText(`${lat}°`, 5, y - 5);
         }
 
         // Linhas de longitude
-        for (let lon = -180; lon <= 180; lon += 15) {
-            const x = this.longitudeToX(lon);
+        for (let lon = -180; lon <= 180; lon += 30) {
+            const x = this.lonToX(lon);
             this.ctx.beginPath();
             this.ctx.moveTo(x, 0);
             this.ctx.lineTo(x, this.canvas.height);
             this.ctx.stroke();
-
-            this.ctx.fillText(`${lon}°`, x + 5, 15);
         }
     }
 
-    latitudeToY(lat) {
+    drawPoint(point) {
+        const x = this.lonToX(point.lon);
+        const y = this.latToY(point.lat);
+        
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 5, 0, Math.PI * 2);
+        this.ctx.fillStyle = point.label === 1 ? '#4CAF50' : '#F44336';
+        this.ctx.fill();
+    }
+
+    drawDecisionBoundary(weights, bias) {
+        if (!weights || weights.length < 2) return;
+
+        const w1 = weights[0];
+        const w2 = weights[1];
+        const epsilon = 1e-6;
+
+        if (Math.abs(w2) < epsilon) {
+            // Linha vertical
+            const x = -bias / w1;
+            const xCanvas = this.lonToX(x);
+            this.ctx.beginPath();
+            this.ctx.moveTo(xCanvas, 0);
+            this.ctx.lineTo(xCanvas, this.canvas.height);
+            this.ctx.strokeStyle = '#4CAF50';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+            return;
+        }
+
+        // Calcular pontos para a linha de decisão
+        const points = [];
+        for (let lat = -90; lat <= 90; lat += 1) {
+            const lon = (-w1 * lat - bias) / w2;
+            if (lon >= -180 && lon <= 180) {
+                const x = this.lonToX(lon);
+                const y = this.latToY(lat);
+                points.push({ x, y });
+            }
+        }
+
+        if (points.length > 1) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                this.ctx.lineTo(points[i].x, points[i].y);
+            }
+            this.ctx.strokeStyle = '#4CAF50';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+        }
+    }
+
+    latToY(lat) {
         return this.canvas.height * (1 - (lat + 90) / 180);
     }
 
-    longitudeToX(lon) {
+    lonToX(lon) {
         return this.canvas.width * (lon + 180) / 360;
     }
 
-    yToLatitude(y) {
+    yToLat(y) {
         return 90 - (y / this.canvas.height) * 180;
     }
 
-    xToLongitude(x) {
+    xToLon(x) {
         return (x / this.canvas.width) * 360 - 180;
     }
 
@@ -176,18 +222,9 @@ export class GeoMode {
         return { lat: latitude, lon: longitude };
     }
 
-    drawPoint(lat, lon, label) {
-        const { x, y } = this.geoToCanvas(lat, lon);
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, 5, 0, 2 * Math.PI);
-        this.ctx.fillStyle = label === 1 ? 'red' : 'blue';
-        this.ctx.fill();
-        this.ctx.stroke();
-    }
-
     drawPoints(points) {
         points.forEach(point => {
-            this.drawPoint(point.lat, point.lon, point.label);
+            this.drawPoint(point);
         });
     }
 } 

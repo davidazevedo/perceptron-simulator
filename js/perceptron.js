@@ -15,17 +15,26 @@ export class Perceptron {
     // Predição para um ponto
     predict(inputs) {
         let sum = 0;
-        for (let i = 0; i < this.weights.length; i++) {
+        for (let i = 0; i < this.weights.length - 1; i++) {
             sum += this.weights[i] * inputs[i];
         }
+        sum += this.weights[this.weights.length - 1]; // Add bias
         return this.activate(sum);
     }
 
     // Normalização das entradas
     normalize(point) {
-        const x = point.x / 1000;
-        const y = point.y / 1000;
-        return [x, y, 1];
+        if (this.isGeoMode) {
+            // Normalização para coordenadas geográficas
+            const lat = point.lat / 90; // Normalize latitude to [-1, 1]
+            const lon = point.lon / 180; // Normalize longitude to [-1, 1]
+            return [lat, lon];
+        } else {
+            // Normalização para coordenadas cartesianas
+            const x = point.x / 1000;
+            const y = point.y / 1000;
+            return [x, y];
+        }
     }
 
     // Treinamento para uma época completa
@@ -34,8 +43,8 @@ export class Perceptron {
         let totalError = 0;
 
         for (const point of points) {
-            const [x, y, bias] = this.normalize(point);
-            const prediction = this.predict([x, y, bias]);
+            const inputs = this.normalize(point);
+            const prediction = this.predict(inputs);
             const error = point.label - prediction;
 
             if (error !== 0) {
@@ -43,10 +52,13 @@ export class Perceptron {
                 totalError += Math.abs(error);
 
                 const learningRate = this.learningRate * (1 - Math.abs(error));
-                this.weights[0] += learningRate * error * x;
-                this.weights[1] += learningRate * error * y;
-                this.weights[2] += learningRate * error * bias;
+                for (let i = 0; i < inputs.length; i++) {
+                    this.weights[i] += learningRate * error * inputs[i];
+                }
+                // Update bias
+                this.weights[this.weights.length - 1] += learningRate * error;
 
+                // Clamp weights
                 this.weights = this.weights.map(w => Math.max(-1, Math.min(1, w)));
             }
         }
@@ -75,10 +87,12 @@ export class Perceptron {
 
     getDecisionLine() {
         if (this.isGeoMode) {
+            const w1 = this.weights[0];
+            const w2 = this.weights[1];
+            const bias = this.weights[2];
             return {
-                lat: this.weights[0],
-                lon: this.weights[1],
-                bias: this.weights[2]
+                slope: -w1 / w2,
+                intercept: -bias / w2
             };
         } else {
             const w1 = this.weights[0];

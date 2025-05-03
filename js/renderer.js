@@ -5,22 +5,14 @@ export class Renderer {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.points = [];
         this.perceptron = null;
-        this.tooltip = null;
-        this.geoMode = null;
+        this.geoMode = new GeoMode(canvas, this.ctx);
         this.isGeoMode = false;
-        this.convergenceBar = {
-            width: 200,
-            height: 20,
-            progress: 0
-        };
-        this.infoPanel = {
-            x: this.canvas.width - 250,
-            y: 20,
-            width: 230,
-            height: 200
-        };
+        this.points = [];
+        this.autoTrainInterval = null;
+        this.convergenceBar = document.getElementById('convergence-bar');
+        this.infoPanel = document.getElementById('info-panel');
+        this.tooltip = null;
         this.animationState = {
             fadeIn: 0,
             fadeOut: 0,
@@ -91,28 +83,32 @@ export class Renderer {
         if (!this.perceptron) return;
 
         const { slope, intercept } = this.perceptron.getDecisionLine();
-        const weights = this.perceptron.weights;
-        const bias = weights[weights.length - 1];
-        
-        // Calcular pontos para desenhar a linha
+        if (isNaN(slope) || isNaN(intercept)) return;
+
+        // Calcular pontos da linha
         const x1 = 0;
         const y1 = slope * x1 + intercept;
         const x2 = this.canvas.width;
         const y2 = slope * x2 + intercept;
-        
-        // Desenhar a linha de decisão
+
+        // Garantir que os pontos estejam dentro do canvas
+        const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+        const y1Clamped = clamp(y1, 0, this.canvas.height);
+        const y2Clamped = clamp(y2, 0, this.canvas.height);
+
+        // Desenhar a linha
         this.ctx.beginPath();
-        this.ctx.moveTo(x1, y1);
-        this.ctx.lineTo(x2, y2);
+        this.ctx.moveTo(x1, y1Clamped);
+        this.ctx.lineTo(x2, y2Clamped);
         this.ctx.strokeStyle = '#4CAF50';
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
 
-        // Desenhar o ponto de interceptação (bias)
-        this.drawBiasPoint(0, intercept);
+        // Desenhar ponto de interceptação no eixo Y
+        this.drawBiasPoint(0, y1Clamped);
 
         // Adicionar tooltip para a reta de decisão
-        this.updateDecisionLineTooltip(slope, intercept, weights, bias);
+        this.updateDecisionLineTooltip(slope, intercept, this.perceptron.weights, this.perceptron.bias);
     }
 
     drawBiasPoint(x, y) {
@@ -294,173 +290,57 @@ export class Renderer {
 
     setMode(isGeoMode) {
         this.isGeoMode = isGeoMode;
-        this.clear();
+        if (isGeoMode && !this.geoMode) {
+            this.geoMode = new GeoMode(this.canvas);
+        }
         this.draw();
     }
 
-    setGeoMode(geoMode) {
-        this.geoMode = geoMode;
-        this.isGeoMode = true;
+    setGeoMode(isGeoMode) {
+        this.isGeoMode = isGeoMode;
+        if (this.perceptron) {
+            this.perceptron.setGeoMode(isGeoMode);
+        }
+        this.draw();
     }
 
     draw() {
-        // Limpar o canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Desenhar fundo (grade ou mapa)
-        if (this.isGeoMode && this.geoMode) {
-            this.geoMode.draw();
+
+        if (this.isGeoMode) {
+            this.geoMode.drawMap();
+            this.geoMode.drawPoints(this.points);
+            this.drawDecisionBoundary();
+            this.drawInfoPanel();
+            this.drawConvergenceBar();
         } else {
-            this.drawGrid(false);
+            this.drawGrid();
+            this.drawPoints();
+            this.drawDecisionLine();
+            this.drawInfoPanel();
+            this.drawConvergenceBar();
         }
-        
-        // Desenhar a linha de decisão primeiro (para ficar atrás dos pontos)
-        this.drawDecisionBoundary();
-        
-        // Desenhar os pontos
-        this.drawPoints();
-        
-        // Desenhar elementos de UI
-        this.drawConvergenceBar();
-        this.drawInfoPanel();
-        this.drawEpochAnimation();
-        
-        // Atualizar estado da animação
-        this.updateAnimationState();
     }
 
     drawDecisionBoundary() {
-        if (!this.perceptron || !this.perceptron.weights || this.perceptron.weights.length < 2) {
-            console.warn("Perceptron não inicializado ou com poucos pesos.");
-            return;
-        }
-    
-        const weights = this.perceptron.weights;
-        const bias = weights[weights.length - 1];
-    
-        // Garantir que w2 != 0 antes de calcular slope/intercept
-        const epsilon = 1e-6;
-        const w1 = weights[0];
-        const w2 = Math.abs(weights[1]) < epsilon ? epsilon : weights[1];
-        const slope = -w1 / w2;
-        const intercept = -bias / w2;
-    
-        // Calcular pontos da linha de decisão
-        const x1 = 0;
-        const y1 = slope * x1 + intercept;
-        const x2 = this.canvas.width;
-        const y2 = slope * x2 + intercept;
-    
-        // Garantir que os pontos estejam dentro do canvas
-        const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
-        const y1Clamped = clamp(y1, 0, this.canvas.height);
-        const y2Clamped = clamp(y2, 0, this.canvas.height);
-    
-        // Desenhar a linha
-        this.ctx.beginPath();
-        this.ctx.moveTo(x1, y1Clamped);
-        this.ctx.lineTo(x2, y2Clamped);
-        this.ctx.strokeStyle = '#4CAF50';
-        this.ctx.lineWidth = 2;
-        this.ctx.stroke();
-    
-        // Desenhar ponto de interceptação no eixo Y
-        this.drawBiasPoint(0, y1Clamped);
-    
-        // Atualizar tooltip
-        this.updateDecisionLineTooltip(slope, intercept, weights, bias);
-    }
-    
-    
-    drawInfoPanel() {
         if (!this.perceptron) return;
 
         const weights = this.perceptron.weights;
         const bias = weights[weights.length - 1];
-        const error = this.perceptron.lastError || 0;
+        this.geoMode.drawDecisionBoundary(weights, bias);
+    }
+    
+    drawInfoPanel() {
+        if (!this.infoPanel) return;
 
-        // Desenhar fundo do painel
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        this.ctx.fillRect(
-            this.infoPanel.x,
-            this.infoPanel.y,
-            this.infoPanel.width,
-            this.infoPanel.height
-        );
-
-        // Desenhar borda
-        this.ctx.strokeStyle = '#333';
-        this.ctx.strokeRect(
-            this.infoPanel.x,
-            this.infoPanel.y,
-            this.infoPanel.width,
-            this.infoPanel.height
-        );
-
-        // Configurar fonte
-        this.ctx.fillStyle = '#333';
-        this.ctx.font = '12px Arial';
-        this.ctx.textAlign = 'left';
-
-        // Desenhar informações
-        let y = this.infoPanel.y + 20;
-        const lineHeight = 20;
-
-        // Título do painel
-        this.ctx.font = 'bold 14px Arial';
-        this.ctx.fillText('Status do Modelo', this.infoPanel.x + 10, y);
-        y += lineHeight;
-
-        // Resetar fonte
-        this.ctx.font = '12px Arial';
-
-        // Fórmula atual
-        const formula = this.isGeoMode
-            ? `w1*lat + w2*lon + b = 0`
-            : `w1*x + w2*y + b = 0`;
-        this.ctx.fillText(`Fórmula: ${formula}`, this.infoPanel.x + 10, y);
-        y += lineHeight;
-
-        // Pesos e Bias
-        this.ctx.fillText(`Pesos: [${weights[0].toFixed(3)}, ${weights[1].toFixed(3)}]`, 
-            this.infoPanel.x + 10, y);
-        y += lineHeight;
-        this.ctx.fillText(`Bias: ${bias.toFixed(3)}`, this.infoPanel.x + 10, y);
-        y += lineHeight;
-
-        // Métricas de desempenho
-        this.ctx.fillText(`Taxa de Erro: ${(error * 100).toFixed(2)}%`, 
-            this.infoPanel.x + 10, y);
-        y += lineHeight;
-
-        // Barra de progresso da convergência
-        const progress = this.perceptron.getConvergenceProgress();
-        const progressWidth = this.infoPanel.width - 20;
-        const progressHeight = 8;
+        const accuracy = this.points.length > 0 ? 
+            this.points.filter(p => this.perceptron.predict(this.perceptron.normalize(p)) === p.label).length / this.points.length : 0;
         
-        // Fundo da barra
-        this.ctx.fillStyle = '#eee';
-        this.ctx.fillRect(
-            this.infoPanel.x + 10,
-            y,
-            progressWidth,
-            progressHeight
-        );
-        
-        // Progresso
-        this.ctx.fillStyle = '#4CAF50';
-        this.ctx.fillRect(
-            this.infoPanel.x + 10,
-            y,
-            progressWidth * progress,
-            progressHeight
-        );
-        
-        // Texto de convergência
-        y += lineHeight;
-        this.ctx.fillStyle = '#333';
-        this.ctx.fillText(`Convergência: ${Math.round(progress * 100)}%`, 
-            this.infoPanel.x + 10, y);
+        this.infoPanel.innerHTML = `
+            <div>Pontos: ${this.points.length}</div>
+            <div>Acurácia: ${(accuracy * 100).toFixed(1)}%</div>
+            <div>Erro: ${this.perceptron.lastError.toFixed(4)}</div>
+        `;
     }
 
     drawEpochAnimation() {
@@ -486,51 +366,36 @@ export class Renderer {
     }
 
     drawConvergenceBar() {
-        if (!this.perceptron) return;
-
+        if (!this.convergenceBar) return;
         const progress = this.perceptron.getConvergenceProgress();
-        this.convergenceBar.progress = progress;
+        this.convergenceBar.style.width = `${progress * 100}%`;
+    }
 
-        // Calcular posição centralizada
-        const x = (this.canvas.width - this.convergenceBar.width) / 2;
-        const y = 20; // 20px do topo
+    addPoint(point) {
+        this.points.push(point);
+        this.draw();
+    }
 
-        // Desenhar fundo da barra
-        this.ctx.fillStyle = '#eee';
-        this.ctx.fillRect(
-            x,
-            y,
-            this.convergenceBar.width,
-            this.convergenceBar.height
-        );
+    clearPoints() {
+        this.points = [];
+        this.draw();
+    }
 
-        // Desenhar progresso
-        this.ctx.fillStyle = '#4CAF50';
-        this.ctx.fillRect(
-            x,
-            y,
-            this.convergenceBar.width * progress,
-            this.convergenceBar.height
-        );
+    startAutoTrain(interval = 100) {
+        if (this.autoTrainInterval) return;
+        
+        this.autoTrainInterval = setInterval(() => {
+            if (this.points.length > 0) {
+                this.perceptron.trainEpoch(this.points);
+                this.draw();
+            }
+        }, interval);
+    }
 
-        // Desenhar borda
-        this.ctx.strokeStyle = '#333';
-        this.ctx.strokeRect(
-            x,
-            y,
-            this.convergenceBar.width,
-            this.convergenceBar.height
-        );
-
-        // Desenhar texto centralizado
-        this.ctx.fillStyle = '#333';
-        this.ctx.font = '12px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(
-            `Convergência: ${Math.round(progress * 100)}%`,
-            this.canvas.width / 2,
-            y + 15
-        );
-        this.ctx.textAlign = 'left'; // Resetar alinhamento
+    stopAutoTrain() {
+        if (this.autoTrainInterval) {
+            clearInterval(this.autoTrainInterval);
+            this.autoTrainInterval = null;
+        }
     }
 } 
